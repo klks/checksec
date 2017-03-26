@@ -182,7 +182,8 @@ void CheckModules(HWND hDlg) {
 	ListInfo *list = new ListInfo;
 	Module::GetList(list);
 	LVITEM lvi;
-	
+	bool is_peplus = false;
+
 	HWND hListView = GetDlgItem(hDlg, IDC_LIST);
 	ZeroMemory(&lvi, sizeof(lvi));
 	lvi.mask = LVIF_TEXT | LVIF_PARAM;
@@ -245,7 +246,12 @@ void CheckModules(HWND hDlg) {
 					PIMAGE_FILE_HEADER pFileHeader = (PIMAGE_FILE_HEADER)&pNTHeader->FileHeader;
 
 					WORD DllCharacteristics;
-					if (pFileHeader->Machine == IMAGE_FILE_MACHINE_I386) {
+					PIMAGE_OPTIONAL_HEADER pOptionalHeader_temp = (PIMAGE_OPTIONAL_HEADER)&pNTHeader->OptionalHeader;
+					if (pOptionalHeader_temp->Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
+						is_peplus = true;
+					}
+
+					if (!is_peplus) {
 						PIMAGE_OPTIONAL_HEADER32 pOptionalHeader = (PIMAGE_OPTIONAL_HEADER32)&pNTHeader->OptionalHeader;
 						DllCharacteristics = pOptionalHeader->DllCharacteristics;
 					}
@@ -267,34 +273,47 @@ void CheckModules(HWND hDlg) {
 						has_SAFESEH = STATUS_NO;
 					}
 
-					PIMAGE_DATA_DIRECTORY pConfigDataDirectory = &pNTHeader->OptionalHeader.DataDirectory[10];
-					if (pConfigDataDirectory->VirtualAddress != 0) {
-						if (pFileHeader->Machine == IMAGE_FILE_MACHINE_I386) {
-							PIMAGE_LOAD_CONFIG_DIRECTORY32 pLoadConfig = MakePtr(PIMAGE_LOAD_CONFIG_DIRECTORY32, dosHeader, pConfigDataDirectory->VirtualAddress);
+					if (pNTHeader->OptionalHeader.NumberOfRvaAndSizes < 10){
+						has_GS = STATUS_NO;
 
-							if (pLoadConfig->SecurityCookie != 0) has_GS = STATUS_YES;
-							else has_GS = STATUS_NO;
+						if (!is_peplus) has_SAFESEH = STATUS_NO;
+						else has_SAFESEH = STATUS_NA;
+					}
+					else {
+						PIMAGE_DATA_DIRECTORY pConfigDataDirectory = &pNTHeader->OptionalHeader.DataDirectory[10];
+						if (pConfigDataDirectory->VirtualAddress != 0) {
+							if (!is_peplus) {
+								if(pConfigDataDirectory->VirtualAddress > GetFileSize(hFile, 0)){
+									has_GS = STATUS_ERR;
+									has_SAFESEH = STATUS_ERR;
+								}
+								else {
+									PIMAGE_LOAD_CONFIG_DIRECTORY32 pLoadConfig = MakePtr(PIMAGE_LOAD_CONFIG_DIRECTORY32, dosHeader, pConfigDataDirectory->VirtualAddress);
 
-							if (strcmp(has_SAFESEH, STATUS_ERR) == 0) {
-								if (pLoadConfig->SEHandlerTable != 0) has_SAFESEH = STATUS_YES;
-								else has_SAFESEH = STATUS_OFF;
+									if (pLoadConfig->SecurityCookie != 0) has_GS = STATUS_YES;
+									else has_GS = STATUS_NO;
+
+									if (strcmp(has_SAFESEH, STATUS_ERR) == 0) {
+										if (pLoadConfig->SEHandlerTable != 0) has_SAFESEH = STATUS_YES;
+										else has_SAFESEH = STATUS_OFF;
+									}
+								}
+							}
+							else {
+								PIMAGE_LOAD_CONFIG_DIRECTORY64 pLoadConfig = MakePtr(PIMAGE_LOAD_CONFIG_DIRECTORY64, dosHeader, pConfigDataDirectory->VirtualAddress);
+
+								if (pLoadConfig->SecurityCookie != 0) has_GS = STATUS_YES;
+								else has_GS = STATUS_NO;
+
+								has_SAFESEH = STATUS_NA;	//Not applicable for 64bit
 							}
 						}
 						else {
-							PIMAGE_LOAD_CONFIG_DIRECTORY64 pLoadConfig = MakePtr(PIMAGE_LOAD_CONFIG_DIRECTORY64, dosHeader, pConfigDataDirectory->VirtualAddress);
+							if (pFileHeader->Machine == IMAGE_FILE_MACHINE_I386) has_SAFESEH = STATUS_NO;
+							else has_SAFESEH = STATUS_NA;	//Not applicable for 64bit
 
-							if (pLoadConfig->SecurityCookie != 0) has_GS = STATUS_YES;
-							else has_GS = STATUS_NO;
-
-							//Not applicable for 64bit
-							has_SAFESEH = STATUS_NA;
+							has_GS = STATUS_NO;
 						}
-					}
-					else {
-						if (pFileHeader->Machine == IMAGE_FILE_MACHINE_I386) has_SAFESEH = STATUS_NO;
-						else has_SAFESEH = STATUS_NA;	//Not applicable for 64bit
-
-						has_GS = STATUS_NO;
 					}
 				}
 			}
