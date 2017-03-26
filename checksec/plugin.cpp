@@ -17,6 +17,10 @@
 #define STATUS_NA				"n/a"
 #define STATUS_ERR				"---"
 
+#ifndef IMAGE_DLLCHARACTERISTICS_GUARD_CF
+#define IMAGE_DLLCHARACTERISTICS_GUARD_CF 0x4000
+#endif
+
 //http://www.debuginfo.com/examples/src/DebugDir.cpp
 #define MakePtr( cast, ptr, addValue ) (cast)( (DWORD_PTR)(ptr) + (DWORD_PTR)(addValue))
 
@@ -186,9 +190,9 @@ void CheckModules(HWND hDlg) {
 	Module::ModuleInfo *pMI = (Module::ModuleInfo*)list->data;
 	for (int i = 0; i < list->count; i++)
 	{
-		HANDLE hFileMap;
-		HANDLE hFile;
-		LPVOID lpFileBase;
+		HANDLE hFileMap=NULL;
+		HANDLE hFile=INVALID_HANDLE_VALUE;
+		LPVOID lpFileBase=0;
 
 		lvi.pszText = (pMI + i)->name;
 		lvi.iItem = ListView_GetItemCount(hListView);
