@@ -323,7 +323,8 @@ void CheckModules(HWND hDlg) {
 			ListView_SetColumnWidth(hListView, i, -1);
 		}
 	}
-	free(list);
+	BridgeFree(list->data);
+	delete list;
 }
 
 LRESULT CustomDraw(HWND hDlg, LPARAM lParam) {
