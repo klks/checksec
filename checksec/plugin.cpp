@@ -291,10 +291,10 @@ void CheckModules(HWND hDlg) {
 						}
 					}
 					else {
-						if (pFileHeader->Machine == IMAGE_FILE_MACHINE_I386) has_SAFESEH = STATUS_ERR;
+						if (pFileHeader->Machine == IMAGE_FILE_MACHINE_I386) has_SAFESEH = STATUS_NO;
 						else has_SAFESEH = STATUS_NA;	//Not applicable for 64bit
 
-						has_GS = STATUS_ERR;
+						has_GS = STATUS_NO;
 					}
 				}
 			}
