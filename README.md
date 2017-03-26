@@ -1,6 +1,6 @@
 checksec for x64dbg
 
-This plugin was inspired by OllySSEH by Mario Ballano.
+This plugin was inspired by OllySSEH by Mario Ballano and the linux checksec.sh by Tobias Klein.
 Please report any bugs/improvements/suggestions.
 
 Screenshots
